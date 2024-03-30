@@ -81,30 +81,28 @@ func (c *Client) WatchValve(topicID string, callback func(action models.ValveAct
 	}
 }
 
-func (c *Client) PublishState(topicID string, payload json.Marshaler) {
-	topicState := fmt.Sprintf("%s/%s", c.baseTopic, topicID)
-	log.Debug().Msgf("PublishState to topic: %s", topicState)
+func (c *Client) PublishState(topic string, payload json.Marshaler) {
+	log.Debug().Msgf("PublishState to topic: %s", topic)
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to marshall %s", topicID)
+		log.Error().Err(err).Msgf("failed to marshall %s", topic)
 	}
-	token := c.instance.Publish(topicState, 0, false, jsonPayload)
+	token := c.instance.Publish(topic, 0, false, jsonPayload)
 	if !token.WaitTimeout(2 * time.Second) {
-		log.Warn().Msgf("timeout to publish state to topic %s", topicState)
+		log.Warn().Msgf("timeout to publish state to topic %s", topic)
 	}
 	if token.Error() != nil {
-		log.Error().Err(token.Error()).Msgf("failed to publish state to topic %s", topicState)
+		log.Error().Err(token.Error()).Msgf("failed to publish state to topic %s", topic)
 	}
 }
 
 func (c *Client) PublishAvailability(topicID string) {
-	topicAvailability := fmt.Sprintf("%s/%s", c.baseTopic, topicID)
-	log.Debug().Msgf("PublishAvailability to topic: %s", topicAvailability)
-	token := c.instance.Publish(topicAvailability, 0, false, "online")
+	log.Debug().Msgf("PublishAvailability to topic: %s", topicID)
+	token := c.instance.Publish(topicID, 0, false, "online")
 	if !token.WaitTimeout(2 * time.Second) {
-		log.Warn().Msgf("timeout to publish availability to topic %s", topicAvailability)
+		log.Warn().Msgf("timeout to publish availability to topic %s", topicID)
 	}
 	if token.Error() != nil {
-		log.Error().Err(token.Error()).Msgf("failed to publish availability to topic %s", topicAvailability)
+		log.Error().Err(token.Error()).Msgf("failed to publish availability to topic %s", topicID)
 	}
 }

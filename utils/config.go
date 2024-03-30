@@ -5,8 +5,9 @@ import (
 )
 
 type Config struct {
-	TLSPort int
-	MQTT    *ConfigMQTT
+	TLSPort            int
+	MQTT               *ConfigMQTT
+	HassDiscoveryTopic string
 }
 
 type ConfigMQTT struct {
@@ -32,6 +33,7 @@ func GetConfig() *Config {
 	viper.SetDefault("MQTT_BROKER_PORT", 1883)
 	viper.SetDefault("MQTT_CLIENT_ID", "akwatek")
 	viper.SetDefault("MQTT_BASE_TOPIC", "akwatek")
+	viper.SetDefault("HASS_DISCOVERY_TOPIC", "homeassistant")
 
 	config := Config{
 		TLSPort: viper.GetInt("TLS_PORT"),
@@ -43,6 +45,7 @@ func GetConfig() *Config {
 			Username:   viper.GetString("MQTT_USERNAME"),
 			Password:   viper.GetString("MQTT_PASSWORD"),
 		},
+		HassDiscoveryTopic: viper.GetString("HASS_DISCOVERY_TOPIC"),
 	}
 	return &config
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 				return
 			}
 			ctlList[itekv1.GetIdentifier()] = ctl
-			go cli.WatchValve(itekv1.GetIdentifier(), ctl.ValveCallback())
+			//go cli.WatchValve(itekv1.GetIdentifier(), ctl.ValveCallback())
 		} else { // if exist, update values of controller
 			if err := ctlList[itekv1.GetIdentifier()].Parse(&itekv1); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{})
@@ -42,7 +43,9 @@ func main() {
 			}
 		}
 
-		log.Info().Msgf("%v -- %v -- %v", reqBodyItekV1.ItekV1, ctlList[itekv1.GetIdentifier()].Sensors, ctlList[itekv1.GetIdentifier()])
+		ctl := ctlList[itekv1.GetIdentifier()]
+
+		log.Info().Msgf("%v -- %v -- %v", reqBodyItekV1.ItekV1, ctl.Sensors, ctl)
 		c.JSON(http.StatusOK, models.ResBodyItekV1{
 			ItekV1: models.ResItekV1{
 				Message: "OK",
@@ -50,11 +53,17 @@ func main() {
 			},
 		})
 
-		cli.PublishAvailability(ctlList[itekv1.GetIdentifier()].GetMQTTAvailabilityTopic())
-		cli.PublishState(ctlList[itekv1.GetIdentifier()].GetMQTTStateTopic(), ctlList[itekv1.GetIdentifier()])
-		for _, sensor := range ctlList[itekv1.GetIdentifier()].Sensors {
-			cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic())
-			cli.PublishState(sensor.GetMQTTStateTopic(), sensor)
+		if ctl.LastHassConfigPublished.Add(time.Hour).Before(time.Now()) {
+			PublishHassConfig(config, cli, ctl)
+			// delay before send state
+			time.Sleep(time.Second * 5)
+		}
+
+		cli.PublishAvailability(ctl.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
+		cli.PublishState(ctl.GetMQTTStateTopic(config.MQTT.BaseTopic), ctl)
+		for _, sensor := range ctl.Sensors {
+			cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
+			cli.PublishState(sensor.GetMQTTStateTopic(config.MQTT.BaseTopic), sensor)
 		}
 	})
 
@@ -70,4 +79,31 @@ func main() {
 	}
 
 	router.RunListener(tlsServer)
+}
+
+func PublishHassConfig(config *utils.Config, cli *mqtt_client.Client, ctl *models.AkwatekCtl) {
+	log.Info().Msgf("Publishing homeassistant mqtt config")
+	cli.PublishState(
+		ctl.GetMQTTValveHassConfigTopic(config.HassDiscoveryTopic),
+		ctl.GetMQTTValveHassConfig(config.MQTT.BaseTopic))
+	// delay for home-assistant on the first time creation
+	time.Sleep(time.Second * 5)
+	cli.PublishState(
+		ctl.GetMQTTAlarmHassConfigTopic(config.HassDiscoveryTopic),
+		ctl.GetMQTTAlarmHassConfig(config.MQTT.BaseTopic))
+	cli.PublishState(
+		ctl.GetMQTTPowerHassConfigTopic(config.HassDiscoveryTopic),
+		ctl.GetMQTTPowerHassConfig(config.MQTT.BaseTopic))
+	cli.PublishState(
+		ctl.GetMQTTBatteryHassConfigTopic(config.HassDiscoveryTopic),
+		ctl.GetMQTTBatteryHassConfig(config.MQTT.BaseTopic))
+
+	for _, sensor := range ctl.Sensors {
+		cli.PublishState(
+			sensor.GetMQTTBatHassConfigTopic(config.HassDiscoveryTopic),
+			sensor.GetMQTTBatHassConfig(config.MQTT.BaseTopic))
+		cli.PublishState(
+			sensor.GetMQTTLeakHassConfigTopic(config.HassDiscoveryTopic),
+			sensor.GetMQTTLeakHassConfig(config.MQTT.BaseTopic))
+	}
 }
