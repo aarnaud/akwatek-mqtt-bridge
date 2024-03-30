@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-type ValveAction int
+type ValveAction string
 
 const (
-	VALVE_ACTION_OPEN   ValveAction = 1
-	VALVE_ACTION_CLOSE  ValveAction = 0
+	VALVE_ACTION_OPEN   ValveAction = "1"
+	VALVE_ACTION_CLOSE  ValveAction = "0"
 	MANUFACTURER        string      = "AKWA Technologies"
 	MANUFACTURER_PREFIX string      = "akwatek"
 )
@@ -22,7 +22,7 @@ type AkwatekCtl struct {
 	MAC                     net.HardwareAddr     `json:"-"`
 	Value                   []byte               `json:"-"`
 	Sensors                 map[int]*LeakoSensor `json:"-"`
-	ValveAction             *ValveAction         `json:"-"`
+	valveAction             *ValveAction         `json:"-"`
 	LastHassConfigPublished time.Time            `json:"-"`
 }
 
@@ -88,15 +88,15 @@ func (a *AkwatekCtl) IsValveOpen() bool {
 
 	// Handle the 2min delay feedback for valve action
 	valveActionClose := VALVE_ACTION_CLOSE
-	if a.ValveAction != nil &&
-		a.ValveAction == &valveActionClose &&
+	if a.valveAction != nil &&
+		a.valveAction == &valveActionClose &&
 		valveOpen {
 		return false
 	}
 	// Handle the 2min delay feedback for valve action if no Alarm (can't open remotely)
 	valveActionOpen := VALVE_ACTION_OPEN
-	if a.ValveAction != nil &&
-		a.ValveAction == &valveActionOpen &&
+	if a.valveAction != nil &&
+		a.valveAction == &valveActionOpen &&
 		!valveOpen && !a.HasAlarm() {
 		return true
 	}
@@ -122,8 +122,16 @@ func (a *AkwatekCtl) GetIdentifier() string {
 
 func (a *AkwatekCtl) ValveCallback() func(ValveAction) {
 	return func(value ValveAction) {
-		a.ValveAction = &value
+		a.valveAction = &value
 	}
+}
+
+func (a *AkwatekCtl) GetValveAction() *ValveAction {
+	return a.valveAction
+}
+
+func (a *AkwatekCtl) ResetValveAction() {
+	a.valveAction = nil
 }
 
 func (a *AkwatekCtl) GetMQTTAvailabilityTopic(baseTopic string) string {
@@ -142,15 +150,21 @@ func (a *AkwatekCtl) GetMQTTValveHassConfigTopic(hassPrefix string) string {
 	return fmt.Sprintf("%s/valve/%s/valve/config", hassPrefix, a.GetMQTTHassNodeId())
 }
 
+func (a *AkwatekCtl) GetMQTTSValveCommandTopic(baseTopic string) string {
+	return fmt.Sprintf("%s/%s/controller/valve/set", baseTopic, a.GetIdentifier())
+}
+
 func (a *AkwatekCtl) GetMQTTValveHassConfig(baseTopic string) *HassDiscoveryPayload {
 	return &HassDiscoveryPayload{
 		Name:              "valve",
 		AvailabilityTopic: a.GetMQTTAvailabilityTopic(baseTopic),
 		DeviceClass:       "water",
+		CommandTopic:      a.GetMQTTSValveCommandTopic(baseTopic),
 		StateTopic:        a.GetMQTTStateTopic(baseTopic),
 		UniqueId:          fmt.Sprintf("%s_valve", a.GetMQTTHassNodeId()),
 		ValueTemplate:     "{{ value_json.valve | abs }}",
 		ReportsPosition:   true,
+		Optimistic:        true,
 		Device: HassDeviceDiscoveryPayload{
 			Name:         a.GetMQTTHassNodeId(),
 			Manufacturer: MANUFACTURER,

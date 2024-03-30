@@ -24,6 +24,7 @@ type HassDiscoveryPayload struct {
 	PayloadOff        string                     `json:"payload_off,omitempty"`
 	PayloadOn         string                     `json:"payload_on,omitempty"`
 	ReportsPosition   bool                       `json:"reports_position,omitempty"`
+	Optimistic        bool                       `json:"optimistic,omitempty"`
 	Device            HassDeviceDiscoveryPayload `json:"device"`
 }
 

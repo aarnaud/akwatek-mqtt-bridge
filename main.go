@@ -35,7 +35,7 @@ func main() {
 				return
 			}
 			ctlList[itekv1.GetIdentifier()] = ctl
-			//go cli.WatchValve(itekv1.GetIdentifier(), ctl.ValveCallback())
+			go cli.WatchValve(ctl.GetMQTTSValveCommandTopic(config.MQTT.BaseTopic), ctl.ValveCallback())
 		} else { // if exist, update values of controller
 			if err := ctlList[itekv1.GetIdentifier()].Parse(&itekv1); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{})
@@ -49,22 +49,28 @@ func main() {
 		c.JSON(http.StatusOK, models.ResBodyItekV1{
 			ItekV1: models.ResItekV1{
 				Message: "OK",
-				Valve:   ctlList[itekv1.GetIdentifier()].ValveAction,
+				Valve:   ctlList[itekv1.GetIdentifier()].GetValveAction(),
 			},
 		})
 
-		if ctl.LastHassConfigPublished.Add(time.Hour).Before(time.Now()) {
-			PublishHassConfig(config, cli, ctl)
-			// delay before send state
-			time.Sleep(time.Second * 5)
-		}
+		ctlList[itekv1.GetIdentifier()].ResetValveAction()
 
-		cli.PublishAvailability(ctl.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
-		cli.PublishState(ctl.GetMQTTStateTopic(config.MQTT.BaseTopic), ctl)
-		for _, sensor := range ctl.Sensors {
-			cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
-			cli.PublishState(sensor.GetMQTTStateTopic(config.MQTT.BaseTopic), sensor)
-		}
+		// Async mqtt publish
+		go func() {
+			if ctl.LastHassConfigPublished.Add(time.Hour).Before(time.Now()) {
+				PublishHassConfig(config, cli, ctl)
+				// delay before send state
+				time.Sleep(time.Second * 5)
+
+			}
+
+			cli.PublishAvailability(ctl.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
+			cli.PublishState(ctl.GetMQTTStateTopic(config.MQTT.BaseTopic), ctl)
+			for _, sensor := range ctl.Sensors {
+				cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
+				cli.PublishState(sensor.GetMQTTStateTopic(config.MQTT.BaseTopic), sensor)
+			}
+		}()
 	})
 
 	// get our ca and server certificate
@@ -106,4 +112,5 @@ func PublishHassConfig(config *utils.Config, cli *mqtt_client.Client, ctl *model
 			sensor.GetMQTTLeakHassConfigTopic(config.HassDiscoveryTopic),
 			sensor.GetMQTTLeakHassConfig(config.MQTT.BaseTopic))
 	}
+	ctl.LastHassConfigPublished = time.Now()
 }

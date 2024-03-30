@@ -7,7 +7,6 @@ import (
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog/log"
-	"path"
 	"strconv"
 	"time"
 )
@@ -53,17 +52,14 @@ func NewMQTT(config *utils.Config) *Client {
 }
 
 func (c *Client) WatchValve(topicID string, callback func(action models.ValveAction)) {
-	topicValve := path.Join(c.baseTopic, topicID, "valve", "set")
 	for {
-		// wait for connection
-		<-c.onConnectWatchValves[topicID]
 		// https://www.home-assistant.io/integrations/button.mqtt/
-		token := c.instance.Subscribe(topicValve, 1, func(client mqtt.Client, message mqtt.Message) {
-			value, err := strconv.ParseBool(string(message.Payload()))
+		token := c.instance.Subscribe(topicID, 1, func(client mqtt.Client, message mqtt.Message) {
+			value, err := strconv.Atoi(string(message.Payload()))
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to parse valve value recieved")
 			}
-			if value {
+			if value > 50 {
 				callback(models.VALVE_ACTION_OPEN)
 			} else {
 				callback(models.VALVE_ACTION_CLOSE)
@@ -72,12 +68,14 @@ func (c *Client) WatchValve(topicID string, callback func(action models.ValveAct
 		})
 		token.WaitTimeout(5 * time.Second)
 		if !token.WaitTimeout(2 * time.Second) {
-			log.Warn().Msgf("timeout to subscribe to topic %s", topicValve)
+			log.Warn().Msgf("timeout to subscribe to topic %s", topicID)
 		}
 		if token.Error() != nil {
-			log.Error().Err(token.Error()).Msgf("failed to subscribe to topic %s", topicValve)
+			log.Error().Err(token.Error()).Msgf("failed to subscribe to topic %s", topicID)
 		}
-		log.Info().Msgf("Subscribed to topic: %s", topicValve)
+		log.Info().Msgf("Subscribed to topic: %s", topicID)
+		// wait for re-connection
+		<-c.onConnectWatchValves[topicID]
 	}
 }
 
