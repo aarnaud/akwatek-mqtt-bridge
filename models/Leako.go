@@ -84,24 +84,29 @@ func (a *AkwatekCtl) HasPowerLine() bool {
 }
 
 func (a *AkwatekCtl) IsValveOpen() bool {
-	valveOpen := a.Value[4]&0b1 == 0b1
+	return a.Value[4]&0b1 == 0b1
+}
+
+func (a *AkwatekCtl) ValveState() string {
+	valveOpen := a.IsValveOpen()
 
 	// Handle the 2min delay feedback for valve action
-	valveActionClose := VALVE_ACTION_CLOSE
 	if a.valveAction != nil &&
-		a.valveAction == &valveActionClose &&
+		*a.valveAction == VALVE_ACTION_CLOSE &&
 		valveOpen {
-		return false
+		return "closing"
 	}
 	// Handle the 2min delay feedback for valve action if no Alarm (can't open remotely)
-	valveActionOpen := VALVE_ACTION_OPEN
 	if a.valveAction != nil &&
-		a.valveAction == &valveActionOpen &&
+		*a.valveAction == VALVE_ACTION_OPEN &&
 		!valveOpen && !a.HasAlarm() {
-		return true
+		return "opening"
 	}
 
-	return valveOpen
+	if valveOpen {
+		return "open"
+	}
+	return "closed"
 }
 
 func (a *AkwatekCtl) HasAlarm() bool {
@@ -162,9 +167,7 @@ func (a *AkwatekCtl) GetMQTTValveHassConfig(baseTopic string) *HassDiscoveryPayl
 		CommandTopic:      a.GetMQTTSValveCommandTopic(baseTopic),
 		StateTopic:        a.GetMQTTStateTopic(baseTopic),
 		UniqueId:          fmt.Sprintf("%s_valve", a.GetMQTTHassNodeId()),
-		ValueTemplate:     "{{ value_json.valve | abs }}",
-		ReportsPosition:   true,
-		Optimistic:        true,
+		ValueTemplate:     "{{ value_json.valve_state }}",
 		Device: HassDeviceDiscoveryPayload{
 			Name:         a.GetMQTTHassNodeId(),
 			Manufacturer: MANUFACTURER,
@@ -241,17 +244,19 @@ func (a *AkwatekCtl) GetMQTTAlarmHassConfig(baseTopic string) *HassDiscoveryPayl
 
 func (a *AkwatekCtl) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		Mac       string `json:"mac"`
-		ValveOpen bool   `json:"valve"`
-		Battery   bool   `json:"battery"`
-		PowerLine bool   `json:"powerLine"`
-		Alarm     bool   `json:"alarm"`
+		Mac        string `json:"mac"`
+		ValveOpen  bool   `json:"valve"`
+		ValveState string `json:"valve_state"`
+		Battery    bool   `json:"battery"`
+		PowerLine  bool   `json:"powerLine"`
+		Alarm      bool   `json:"alarm"`
 	}{
-		Mac:       a.MAC.String(),
-		ValveOpen: a.IsValveOpen(),
-		Battery:   a.HasBattery(),
-		PowerLine: a.HasPowerLine(),
-		Alarm:     a.HasAlarm(),
+		Mac:        a.MAC.String(),
+		ValveOpen:  a.IsValveOpen(),
+		ValveState: a.ValveState(),
+		Battery:    a.HasBattery(),
+		PowerLine:  a.HasPowerLine(),
+		Alarm:      a.HasAlarm(),
 	})
 }
 

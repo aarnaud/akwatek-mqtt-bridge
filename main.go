@@ -53,8 +53,6 @@ func main() {
 			},
 		})
 
-		ctlList[itekv1.GetIdentifier()].ResetValveAction()
-
 		// Async mqtt publish
 		go func() {
 			if ctl.LastHassConfigPublished.Add(time.Hour).Before(time.Now()) {
@@ -70,6 +68,8 @@ func main() {
 				cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
 				cli.PublishState(sensor.GetMQTTStateTopic(config.MQTT.BaseTopic), sensor)
 			}
+			// don't repeat valve action on the next call
+			ctlList[itekv1.GetIdentifier()].ResetValveAction()
 		}()
 	})
 

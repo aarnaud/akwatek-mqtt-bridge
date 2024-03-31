@@ -7,7 +7,6 @@ import (
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog/log"
-	"strconv"
 	"time"
 )
 
@@ -55,16 +54,12 @@ func (c *Client) WatchValve(topicID string, callback func(action models.ValveAct
 	for {
 		// https://www.home-assistant.io/integrations/button.mqtt/
 		token := c.instance.Subscribe(topicID, 1, func(client mqtt.Client, message mqtt.Message) {
-			value, err := strconv.Atoi(string(message.Payload()))
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to parse valve value recieved")
-			}
-			if value > 50 {
+			value := string(message.Payload())
+			if value == "OPEN" {
 				callback(models.VALVE_ACTION_OPEN)
 			} else {
 				callback(models.VALVE_ACTION_CLOSE)
 			}
-
 		})
 		token.WaitTimeout(5 * time.Second)
 		if !token.WaitTimeout(2 * time.Second) {
