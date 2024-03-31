@@ -29,6 +29,8 @@ Behaviour and Assumption:
 - `AMB_MQTT_USERNAME`
 - `AMB_MQTT_PASSWORD`
 
+![example.png](example.png)
+
 ## Reverse engineering
 ### Parsing the request payload
 
