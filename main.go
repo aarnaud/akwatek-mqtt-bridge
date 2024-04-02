@@ -14,8 +14,9 @@ import (
 )
 
 func main() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	config := utils.GetConfig()
+	zerolog.SetGlobalLevel(config.LogLevel)
 	cli := mqtt_client.NewMQTT(config)
 	router := gin.New()
 
@@ -45,7 +46,8 @@ func main() {
 
 		ctl := ctlList[itekv1.GetIdentifier()]
 
-		log.Info().Msgf("%v -- %v -- %v", reqBodyItekV1.ItekV1, ctl.Sensors, ctl)
+		log.Debug().Msgf("%v", reqBodyItekV1.ItekV1)
+		log.Info().Msgf("%s -- %v", ctl, ctl.Sensors)
 		c.JSON(http.StatusOK, models.ResBodyItekV1{
 			ItekV1: models.ResItekV1{
 				Message: "OK",
@@ -59,12 +61,14 @@ func main() {
 				PublishHassConfig(config, cli, ctl)
 				// delay before send state
 				time.Sleep(time.Second * 5)
-
 			}
 
 			cli.PublishAvailability(ctl.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
 			cli.PublishState(ctl.GetMQTTStateTopic(config.MQTT.BaseTopic), ctl)
 			for _, sensor := range ctl.Sensors {
+				if !sensor.IsConfigured() {
+					continue
+				}
 				cli.PublishAvailability(sensor.GetMQTTAvailabilityTopic(config.MQTT.BaseTopic))
 				cli.PublishState(sensor.GetMQTTStateTopic(config.MQTT.BaseTopic), sensor)
 			}
@@ -105,6 +109,9 @@ func PublishHassConfig(config *utils.Config, cli *mqtt_client.Client, ctl *model
 		ctl.GetMQTTBatteryHassConfig(config.MQTT.BaseTopic))
 
 	for _, sensor := range ctl.Sensors {
+		if !sensor.IsConfigured() {
+			continue
+		}
 		cli.PublishState(
 			sensor.GetMQTTBatHassConfigTopic(config.HassDiscoveryTopic),
 			sensor.GetMQTTBatHassConfig(config.MQTT.BaseTopic))

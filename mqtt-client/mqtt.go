@@ -11,10 +11,10 @@ import (
 )
 
 type Client struct {
-	config               *utils.ConfigMQTT
-	instance             mqtt.Client
-	baseTopic            string
-	onConnectWatchValves map[string]chan bool
+	config         *utils.ConfigMQTT
+	instance       mqtt.Client
+	baseTopic      string
+	onConnectWatch map[string]chan bool
 }
 
 func NewMQTT(config *utils.Config) *Client {
@@ -24,11 +24,11 @@ func NewMQTT(config *utils.Config) *Client {
 	opts.SetUsername(config.MQTT.Username)
 	opts.SetPassword(config.MQTT.Password)
 
-	onConnectWatchValves := make(map[string]chan bool, 1)
+	onConnectWatch := make(map[string]chan bool, 1)
 	opts.OnConnect = func(client mqtt.Client) {
 		log.Info().Msg("MQTT Connected")
-		for _, onConnectWatchValve := range onConnectWatchValves {
-			onConnectWatchValve <- true
+		for _, onConnectChan := range onConnectWatch {
+			onConnectChan <- true
 		}
 	}
 	opts.OnConnectionLost = func(client mqtt.Client, err error) {
@@ -43,14 +43,15 @@ func NewMQTT(config *utils.Config) *Client {
 	}
 
 	return &Client{
-		config:               config.MQTT,
-		instance:             client,
-		baseTopic:            config.MQTT.BaseTopic,
-		onConnectWatchValves: onConnectWatchValves,
+		config:         config.MQTT,
+		instance:       client,
+		baseTopic:      config.MQTT.BaseTopic,
+		onConnectWatch: onConnectWatch,
 	}
 }
 
 func (c *Client) WatchValve(topicID string, callback func(action models.ValveAction)) {
+	c.onConnectWatch[topicID] = make(chan bool)
 	for {
 		// https://www.home-assistant.io/integrations/button.mqtt/
 		token := c.instance.Subscribe(topicID, 1, func(client mqtt.Client, message mqtt.Message) {
@@ -70,7 +71,7 @@ func (c *Client) WatchValve(topicID string, callback func(action models.ValveAct
 		}
 		log.Info().Msgf("Subscribed to topic: %s", topicID)
 		// wait for re-connection
-		<-c.onConnectWatchValves[topicID]
+		<-c.onConnectWatch[topicID]
 	}
 }
 

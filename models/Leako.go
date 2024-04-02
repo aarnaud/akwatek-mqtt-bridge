@@ -279,7 +279,26 @@ func (a *LeakoSensor) IsConfigured() bool {
 }
 
 func (a *LeakoSensor) String() string {
-	return fmt.Sprintf("ID:%d Leak=%t LowBat=%t Configured=%t", a.ID, a.IsWaterDetected(), a.IsBatLow(), a.IsConfigured())
+	value := strings.Builder{}
+	if a.IsWaterDetected() {
+		value.Write([]byte("leak"))
+	}
+	if a.IsBatLow() {
+		if value.Len() > 0 {
+			value.Write([]byte("+"))
+		}
+		value.Write([]byte("LowBat"))
+	}
+	if !a.IsConfigured() {
+		if value.Len() > 0 {
+			value.Write([]byte("+"))
+		}
+		value.Write([]byte("NotConf"))
+	}
+	if value.Len() == 0 {
+		value.Write([]byte("ok"))
+	}
+	return value.String()
 }
 
 func (a *LeakoSensor) GetIdentifier() string {
