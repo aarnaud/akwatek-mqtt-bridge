@@ -12,6 +12,8 @@ Behaviour and Assumption:
   - That means you have to present any certificate signed by a CA even a Self-signed CA, not a Self-signed server certificate
 - Port 443 seem to be hardcoded
 
+**[Home Assistant Addon for Akwatek here](https://github.com/aarnaud/akwatek-hass-addons)**
+
 ## Features
 
 - [x] Get sensors informations (leak and low battery)
