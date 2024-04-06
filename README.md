@@ -10,6 +10,7 @@ Behaviour and Assumption:
 - This domain can be changed during the wifi configuration.
 - The controller validate the TLS server certificate without controlling the certificate chain
   - That means you have to present any certificate signed by a CA even a Self-signed CA, not a Self-signed server certificate
+- Port 443 seem to be hardcoded
 
 ## Features
 
@@ -20,7 +21,7 @@ Behaviour and Assumption:
 
 ## Envs
 
-- `AMB_TLS_PORT` default `8443`
+- `AMB_TLS_PORT` default `443`
 - `AMB_MQTT_BROKER_PORT`  default `1883`
 - `AMB_MQTT_CLIENT_ID`  default `akwatek`
 - `AMB_MQTT_BASE_TOPIC`  default `akwatek`
