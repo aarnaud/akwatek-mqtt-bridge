@@ -33,7 +33,7 @@ func GetConfig() *Config {
 	viper.ReadInConfig()
 
 	viper.SetDefault("LOG_LEVEL", "info")
-	viper.SetDefault("TLS_PORT", 8443)
+	viper.SetDefault("TLS_PORT", 443) // The controler is hardcoded to use this port
 	viper.SetDefault("MQTT_BROKER_PORT", 1883)
 	viper.SetDefault("MQTT_CLIENT_ID", "akwatek")
 	viper.SetDefault("MQTT_BASE_TOPIC", "akwatek")
