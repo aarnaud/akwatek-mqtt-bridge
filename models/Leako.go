@@ -274,6 +274,10 @@ func (a *LeakoSensor) IsBatLow() bool {
 	return a.Value&0b0100 == 0b0100
 }
 
+func (a *LeakoSensor) IsLostSignal() bool {
+	return a.Value&0b0100 == 0b0010
+}
+
 func (a *LeakoSensor) IsConfigured() bool {
 	return a.Value&0b0001 == 0b0001
 }
@@ -294,6 +298,12 @@ func (a *LeakoSensor) String() string {
 			value.Write([]byte("+"))
 		}
 		value.Write([]byte("NotConf"))
+	}
+	if a.IsLostSignal() {
+		if value.Len() > 0 {
+			value.Write([]byte("+"))
+		}
+		value.Write([]byte("LostSignal"))
 	}
 	if value.Len() == 0 {
 		value.Write([]byte("ok"))
@@ -357,12 +367,36 @@ func (a *LeakoSensor) GetMQTTBatHassConfig(baseTopic string) *HassDiscoveryPaylo
 	}
 }
 
+func (a *LeakoSensor) GetMQTTSignalHassConfigTopic(hassPrefix string) string {
+	return fmt.Sprintf("%s/binary_sensor/%s/sensor-%d-lost/config", hassPrefix, a.Ctl.GetMQTTHassNodeId(), a.ID)
+}
+
+func (a *LeakoSensor) GetMQTTSignalHassConfig(baseTopic string) *HassDiscoveryPayload {
+	return &HassDiscoveryPayload{
+		Name:              fmt.Sprintf("%d", a.ID),
+		AvailabilityTopic: a.GetMQTTAvailabilityTopic(baseTopic),
+		DeviceClass:       "connectivity",
+		StateTopic:        a.GetMQTTStateTopic(baseTopic),
+		UniqueId:          fmt.Sprintf("%s_%d-signal", a.Ctl.GetMQTTHassNodeId(), a.ID),
+		ValueTemplate:     "{{ value_json.lost_signal | abs }}",
+		PayloadOff:        "1",
+		PayloadOn:         "0",
+		Device: HassDeviceDiscoveryPayload{
+			Name:         a.Ctl.GetMQTTHassNodeId(),
+			Manufacturer: MANUFACTURER,
+			Identifiers:  []string{a.Ctl.GetMQTTHassNodeId()},
+		},
+	}
+}
+
 func (a *LeakoSensor) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		LowBat bool `json:"low_bat"`
-		Leak   bool `json:"leak"`
+		LowBat     bool `json:"low_bat"`
+		LostSignal bool `json:"lost_signal"`
+		Leak       bool `json:"leak"`
 	}{
-		LowBat: a.IsBatLow(),
-		Leak:   a.IsWaterDetected(),
+		LowBat:     a.IsBatLow(),
+		LostSignal: a.IsLostSignal(),
+		Leak:       a.IsWaterDetected(),
 	})
 }

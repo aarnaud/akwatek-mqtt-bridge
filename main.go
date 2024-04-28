@@ -118,6 +118,9 @@ func PublishHassConfig(config *utils.Config, cli *mqtt_client.Client, ctl *model
 		cli.PublishState(
 			sensor.GetMQTTLeakHassConfigTopic(config.HassDiscoveryTopic),
 			sensor.GetMQTTLeakHassConfig(config.MQTT.BaseTopic))
+		cli.PublishState(
+			sensor.GetMQTTSignalHassConfigTopic(config.HassDiscoveryTopic),
+			sensor.GetMQTTSignalHassConfig(config.MQTT.BaseTopic))
 	}
 	ctl.LastHassConfigPublished = time.Now()
 }

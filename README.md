@@ -82,7 +82,7 @@ D => 1101
 ```
 
 - least significant bit, indicate there is en sensors configured, somethings like that
-- second bit, I don't know, but there is a low temperature detection, I should be this
+- second bit, Lost of signal
 - third bit, Low battery status
 - fourth bit, Leak detection
 
