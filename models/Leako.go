@@ -275,7 +275,7 @@ func (a *LeakoSensor) IsBatLow() bool {
 }
 
 func (a *LeakoSensor) IsLostSignal() bool {
-	return a.Value&0b0100 == 0b0010
+	return a.Value&0b010 == 0b0010
 }
 
 func (a *LeakoSensor) IsConfigured() bool {
